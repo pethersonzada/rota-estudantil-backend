@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: van-app-backend
+    runtime: java
+    buildCommand: "./mvnw clean package -DskipTests"
+    startCommand: "java -jar target/$(ls target/*.jar | head -n 1)"
+    envVars:
+      - key: JAVA_VERSION
+        value: 17
+      - key: DATABASE_URL
+        fromGroup: app-secrets
+      - key: DATABASE_USER
+        fromGroup: app-secrets
+      - key: DATABASE_PASSWORD
+        fromGroup: app-secrets
