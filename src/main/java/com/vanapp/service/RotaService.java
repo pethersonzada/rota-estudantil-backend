@@ -11,7 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class RotaService {
@@ -35,27 +36,38 @@ public class RotaService {
         return R * c;
     }
 
-    public List<Usuario> otimizarRota(Long motoristaId) {
-        // Busca apenas quem confirmou presença HOJE
-        List<Usuario> passageiros = presencaRepository.findByDataAndStatus(LocalDate.now(), "CONFIRMADO")
-                                                      .stream()
-                                                      .map(Presenca::getUsuario)
-                                                      .toList();
+    public List<Usuario> otimizarRota(Long motoristaId, String sentido) {
+        // 1. FILTRAGEM INTELIGENTE: Remove duplicatas e pega apenas o último status do dia
+        List<Presenca> presencasDoDia = presencaRepository.findByData(LocalDate.now());
+        
+        List<Usuario> passageiros = presencasDoDia.stream()
+                .collect(Collectors.toMap(
+                        p -> p.getUsuario().getId(), 
+                        p -> p, 
+                        (p1, p2) -> p2 // Em caso de duplicata, mantém o último registro
+                ))
+                .values()
+                .stream()
+                .filter(p -> {
+                    String status = p.getStatus();
+                    return "ida".equalsIgnoreCase(sentido) 
+                        ? ("IDA_E_VOLTA".equals(status) || "SO_IDA".equals(status))
+                        : ("IDA_E_VOLTA".equals(status) || "SO_VOLTA".equals(status));
+                })
+                .map(Presenca::getUsuario)
+                .distinct()
+                .collect(Collectors.toList());
 
-        if (passageiros.isEmpty()) {
-            throw new RuntimeException("Ninguém confirmou presença para hoje!");
-        }
+        if (passageiros.isEmpty()) throw new RuntimeException("Nenhum passageiro válido para " + sentido + "!");
 
         Usuario motorista = usuarioRepository.findById(motoristaId)
                 .orElseThrow(() -> new RuntimeException("Motorista não encontrado"));
 
+        // 2. MONTAGEM DA MATRIZ
         int n = passageiros.size() + 1;
         double[] lats = new double[n];
         double[] lons = new double[n];
-
-        lats[0] = motorista.getLatitude();
-        lons[0] = motorista.getLongitude();
-
+        lats[0] = motorista.getLatitude(); lons[0] = motorista.getLongitude();
         for (int i = 0; i < passageiros.size(); i++) {
             lats[i + 1] = passageiros.get(i).getLatitude();
             lons[i + 1] = passageiros.get(i).getLongitude();
@@ -68,35 +80,27 @@ public class RotaService {
             }
         }
 
+        // 3. ENGINE DE OTIMIZAÇÃO (OR-TOOLS)
         RoutingIndexManager manager = new RoutingIndexManager(n, 1, 0);
         RoutingModel routing = new RoutingModel(manager);
+        routing.setArcCostEvaluatorOfAllVehicles(routing.registerTransitCallback((f, t) -> distancias[manager.indexToNode(f)][manager.indexToNode(t)]));
+        
+        Assignment solution = routing.solveWithParameters(main.defaultRoutingSearchParameters().toBuilder()
+                .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC).build());
+        
+        if (solution == null) throw new RuntimeException("Falha na otimização");
 
-        int transitCallbackIndex = routing.registerTransitCallback((from, to) -> {
-            int fromNode = manager.indexToNode(from);
-            int toNode = manager.indexToNode(to);
-            return distancias[fromNode][toNode];
-        });
-
-        routing.setArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
-
-        RoutingSearchParameters searchParameters = main.defaultRoutingSearchParameters()
-                .toBuilder()
-                .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
-                .setTimeLimit(Duration.newBuilder().setSeconds(5).build())
-                .build();
-
-        Assignment solution = routing.solveWithParameters(searchParameters);
-
-        if (solution == null) throw new RuntimeException("Não foi possível otimizar a rota");
-
-        List<Usuario> rotaOtimizada = new java.util.ArrayList<>();
+        List<Usuario> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
         index = solution.value(routing.nextVar(index));
-
         while (!routing.isEnd(index)) {
-            int nodeIndex = manager.indexToNode(index);
-            rotaOtimizada.add(passageiros.get(nodeIndex - 1));
+            rotaOtimizada.add(passageiros.get(manager.indexToNode(index) - 1));
             index = solution.value(routing.nextVar(index));
+        }
+
+        // 4. INVERSÃO LÓGICA (Garante que a volta venha invertida)
+        if ("volta".equalsIgnoreCase(sentido)) {
+            Collections.reverse(rotaOtimizada);
         }
 
         return rotaOtimizada;

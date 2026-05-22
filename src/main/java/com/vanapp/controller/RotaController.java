@@ -16,15 +16,17 @@ public class RotaController {
     @Autowired
     private RotaService rotaService;
 
-    // Endpoint para buscar a rota otimizada apenas com passageiros confirmados
+    // A porta agora está preparada para escutar qual é o sentido da viagem
     @GetMapping("/otimizar/{motoristaId}")
-    public ResponseEntity<?> otimizarRota(@PathVariable Long motoristaId) {
+    public ResponseEntity<?> otimizarRota(
+            @PathVariable Long motoristaId,
+            @RequestParam(value = "sentido", defaultValue = "ida") String sentido) {
         try {
-            // O RotaService agora filtra pela tabela de Presencas automaticamente
-            List<Usuario> rota = rotaService.otimizarRota(motoristaId);
+            System.out.println("--- OTIMIZANDO ROTA DE " + sentido.toUpperCase() + " ---");
+            // Entregamos o ID e o Sentido para o motor de busca (Service)
+            List<Usuario> rota = rotaService.otimizarRota(motoristaId, sentido);
             return ResponseEntity.ok(rota);
         } catch (RuntimeException e) {
-            // Se ninguém confirmou, retornamos a mensagem de erro formatada
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

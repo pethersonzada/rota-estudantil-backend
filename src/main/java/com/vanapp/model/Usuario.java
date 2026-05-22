@@ -25,7 +25,8 @@ public class Usuario {
     @Column(nullable = false)
     private String tipo;
 
-    @Column(nullable = false)
+    // Alterado para nullable = true para o cadastro inicial não quebrar
+    @Column(nullable = true)
     private String enderecoCompleto;
 
     private Double latitude;
