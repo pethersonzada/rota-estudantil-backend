@@ -2,11 +2,10 @@ package com.vanapp.service;
 
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.*;
-import com.google.protobuf.Duration;
 import com.vanapp.model.Usuario;
 import com.vanapp.model.Presenca;
 import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.repository.PresencaRepository; 
+import com.vanapp.repository.PresencaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +16,8 @@ import java.util.stream.Collectors;
 @Service
 public class RotaService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private PresencaRepository presencaRepository;
+    @Autowired private UsuarioRepository usuarioRepository;
+    @Autowired private PresencaRepository presencaRepository;
 
     static { Loader.loadNativeLibraries(); }
 
@@ -37,33 +33,32 @@ public class RotaService {
     }
 
     public List<Usuario> otimizarRota(Long motoristaId, String sentido) {
-        // 1. FILTRAGEM INTELIGENTE: Remove duplicatas e pega apenas o último status do dia
+        // Busca presenças de hoje
         List<Presenca> presencasDoDia = presencaRepository.findByData(LocalDate.now());
         
+        // Filtra passageiros baseados no sentido solicitado pelo App
         List<Usuario> passageiros = presencasDoDia.stream()
-                .collect(Collectors.toMap(
-                        p -> p.getUsuario().getId(), 
-                        p -> p, 
-                        (p1, p2) -> p2 // Em caso de duplicata, mantém o último registro
-                ))
-                .values()
-                .stream()
+                .filter(p -> p.getUsuario() != null && p.getStatus() != null)
                 .filter(p -> {
                     String status = p.getStatus();
-                    return "ida".equalsIgnoreCase(sentido) 
-                        ? ("IDA_E_VOLTA".equals(status) || "SO_IDA".equals(status))
-                        : ("IDA_E_VOLTA".equals(status) || "SO_VOLTA".equals(status));
+                    if ("ida".equalsIgnoreCase(sentido)) {
+                        return "AMBOS".equals(status) || "IDA".equals(status);
+                    } else {
+                        return "AMBOS".equals(status) || "VOLTA".equals(status);
+                    }
                 })
                 .map(Presenca::getUsuario)
                 .distinct()
                 .collect(Collectors.toList());
 
-        if (passageiros.isEmpty()) throw new RuntimeException("Nenhum passageiro válido para " + sentido + "!");
+        if (passageiros.isEmpty()) {
+            throw new RuntimeException("Nenhum passageiro confirmado para " + sentido);
+        }
 
         Usuario motorista = usuarioRepository.findById(motoristaId)
                 .orElseThrow(() -> new RuntimeException("Motorista não encontrado"));
 
-        // 2. MONTAGEM DA MATRIZ
+        // Preparação para OR-Tools
         int n = passageiros.size() + 1;
         double[] lats = new double[n];
         double[] lons = new double[n];
@@ -80,7 +75,7 @@ public class RotaService {
             }
         }
 
-        // 3. ENGINE DE OTIMIZAÇÃO (OR-TOOLS)
+        // Otimização de Rota (TSP)
         RoutingIndexManager manager = new RoutingIndexManager(n, 1, 0);
         RoutingModel routing = new RoutingModel(manager);
         routing.setArcCostEvaluatorOfAllVehicles(routing.registerTransitCallback((f, t) -> distancias[manager.indexToNode(f)][manager.indexToNode(t)]));
@@ -98,7 +93,6 @@ public class RotaService {
             index = solution.value(routing.nextVar(index));
         }
 
-        // 4. INVERSÃO LÓGICA (Garante que a volta venha invertida)
         if ("volta".equalsIgnoreCase(sentido)) {
             Collections.reverse(rotaOtimizada);
         }

@@ -8,7 +8,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface PresencaRepository extends JpaRepository<Presenca, Long> {
-    
+
     @Query("SELECT p FROM Presenca p JOIN FETCH p.usuario WHERE p.data = :data")
     List<Presenca> findByData(@Param("data") LocalDate data);
+
+    @Query(value = "SELECT * FROM presencas WHERE usuario_id = :usuarioId AND data = CAST(:data AS DATE)", nativeQuery = true)
+    Presenca findByUsuarioIdAndData(@Param("usuarioId") Long usuarioId, @Param("data") LocalDate data);
 }
