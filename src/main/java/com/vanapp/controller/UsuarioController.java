@@ -1,18 +1,31 @@
 package com.vanapp.controller;
 
-import com.vanapp.model.Usuario;
-import com.vanapp.model.Presenca;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.repository.PresencaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.vanapp.dto.EnderecoRequest;
+import com.vanapp.model.Presenca;
+import com.vanapp.model.Usuario;
+import com.vanapp.repository.PresencaRepository;
+import com.vanapp.repository.UsuarioRepository;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "1. Gestão de Usuários", description = "Operações de Motoristas e Passageiros")
 @RestController
 @RequestMapping("/usuarios")
 @CrossOrigin(origins = "*")
@@ -25,7 +38,7 @@ public class UsuarioController {
         public Long id;
         public String nome;
         public String status;
-        public Double latitude; // Adicionado para garantir que o mapa receba
+        public Double latitude;
         public Double longitude;
 
         public PassageiroDTO(Usuario u, String status) {
@@ -37,6 +50,7 @@ public class UsuarioController {
         }
     }
 
+    @Operation(summary = "Listar Passageiros", description = "Retorna todos os passageiros ativos e o status de presença do dia.")
     @Transactional(readOnly = true)
     @GetMapping("/passageiros")
     public ResponseEntity<List<PassageiroDTO>> listarPassageiros() {
@@ -48,7 +62,7 @@ public class UsuarioController {
         }).collect(Collectors.toList()));
     }
 
-    // NOVO ENDPOINT ADICIONADO PARA O MAPA FUNCIONAR
+    @Operation(summary = "Buscar Motorista", description = "Busca o perfil do motorista vinculado ao sistema.")
     @GetMapping("/motorista")
     public ResponseEntity<Usuario> getMotorista() {
         return usuarioRepository.findByTipo("MOTORISTA")
@@ -58,6 +72,7 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(404).build());
     }
 
+    @Operation(summary = "Login do Usuário", description = "Autentica o usuário pelo CPF e Senha.")
     @PostMapping("/login")
     public ResponseEntity<Usuario> login(@RequestBody Usuario loginRequest) {
         return usuarioRepository.findByCpf(loginRequest.getCpf().trim())
@@ -66,11 +81,26 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(401).build());
     }
 
+    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro. Impede cadastro com CPF duplicado.")
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
         if (usuarioRepository.findByCpf(novoUsuario.getCpf()).isPresent()) {
-            return ResponseEntity.status(400).body("Erro");
+            return ResponseEntity.status(400).body("Erro: CPF já cadastrado");
         }
         return ResponseEntity.ok(usuarioRepository.save(novoUsuario));
+    }
+
+    @Operation(summary = "Atualizar Endereço", description = "Atualiza latitude, longitude e endereço completo do passageiro.")
+    @PutMapping("/salvar-endereco")
+    public ResponseEntity<?> atualizarEndereco(@RequestBody EnderecoRequest request) {
+        Usuario usuario = usuarioRepository.findById(request.getIdUsuario())
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + request.getIdUsuario()));
+
+        usuario.setLatitude(request.getLatitude());
+        usuario.setLongitude(request.getLongitude());
+        usuario.setEnderecoCompleto(request.getEnderecoCompleto());
+
+        usuarioRepository.save(usuario);
+        return ResponseEntity.ok(usuario);
     }
 }
