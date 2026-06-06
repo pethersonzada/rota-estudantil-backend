@@ -1,19 +1,16 @@
 package com.vanapp.service;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.vanapp.model.Usuario;
 import com.vanapp.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.util.List;
 
 @Service
 public class UsuarioService {
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private GeocodingService geocodingService;
+    @Autowired private UsuarioRepository usuarioRepository;
+    @Autowired private GeocodingService geocodingService;
 
     public Usuario cadastrarUsuario(Usuario usuario) {
         if (usuarioRepository.findByCpf(usuario.getCpf()).isPresent()) {
@@ -29,6 +26,7 @@ public class UsuarioService {
     }
 
     public Usuario buscarPorId(Long id) {
+        if (id == null) throw new RuntimeException("id não pode ser nulo");
         return usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
     }
@@ -36,7 +34,7 @@ public class UsuarioService {
     public List<Usuario> listarPassageiros() {
         return usuarioRepository.findAll()
                 .stream()
-                .filter(u -> u.getTipo().equals("PASSAGEIRO"))
+                .filter(u -> "PASSAGEIRO".equals(u.getTipo()))
                 .toList();
     }
 }

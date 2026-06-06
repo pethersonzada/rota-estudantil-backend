@@ -1,5 +1,4 @@
 package com.vanapp.controller;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -57,7 +56,9 @@ public class UsuarioController {
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         List<Usuario> passageiros = usuarioRepository.findByTipo("PASSAGEIRO");
         return ResponseEntity.ok(passageiros.stream().map(u -> {
-            Presenca p = presencaRepository.findByUsuarioIdAndData(u.getId(), hoje);
+            Long uid = u.getId();
+            if (uid == null) return new PassageiroDTO(u, null);
+            Presenca p = presencaRepository.findByUsuarioIdAndData(uid, hoje);
             return new PassageiroDTO(u, (p != null) ? p.getStatus() : null);
         }).collect(Collectors.toList()));
     }
@@ -93,13 +94,15 @@ public class UsuarioController {
     @Operation(summary = "Atualizar Endereço", description = "Atualiza latitude, longitude e endereço completo do passageiro.")
     @PutMapping("/salvar-endereco")
     public ResponseEntity<?> atualizarEndereco(@RequestBody EnderecoRequest request) {
-        Usuario usuario = usuarioRepository.findById(request.getIdUsuario())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + request.getIdUsuario()));
-
+        Long idUsuario = request.getIdUsuario();
+        if (idUsuario == null) {
+            return ResponseEntity.badRequest().body("idUsuario não pode ser nulo");
+        }
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + idUsuario));
         usuario.setLatitude(request.getLatitude());
         usuario.setLongitude(request.getLongitude());
         usuario.setEnderecoCompleto(request.getEnderecoCompleto());
-
         usuarioRepository.save(usuario);
         return ResponseEntity.ok(usuario);
     }

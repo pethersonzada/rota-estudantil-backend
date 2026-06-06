@@ -1,5 +1,4 @@
 package com.vanapp.controller;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -31,7 +30,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/rota")
 @CrossOrigin(origins = "*")
 public class RotaController {
-
     @Autowired private PresencaRepository presencaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RotaService rotaService;
@@ -40,10 +38,13 @@ public class RotaController {
     @PostMapping("/confirmar")
     @Transactional
     public ResponseEntity<String> confirmarPresenca(@RequestParam Long usuarioId, @RequestParam String status) {
-        
+        if (usuarioId == null) {
+            return ResponseEntity.badRequest().body("usuarioId não pode ser nulo");
+        }
+
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         Presenca p = presencaRepository.findByUsuarioIdAndData(usuarioId, hoje);
-        
+
         if ("LIMPAR".equals(status)) {
             if (p != null) {
                 presencaRepository.delete(p);
@@ -65,6 +66,9 @@ public class RotaController {
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas para o motorista com base na localização dos passageiros.")
     @GetMapping("/otimizar/{motoristaId}")
     public ResponseEntity<?> otimizarRota(@PathVariable Long motoristaId, @RequestParam String sentido) {
+        if (motoristaId == null) {
+            return ResponseEntity.badRequest().body(Map.of("erro", "motoristaId não pode ser nulo"));
+        }
         try {
             List<Usuario> rotaOtimizada = rotaService.otimizarRota(motoristaId, sentido);
             return ResponseEntity.ok(rotaOtimizada);

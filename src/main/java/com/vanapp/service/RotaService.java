@@ -1,17 +1,23 @@
 package com.vanapp.service;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import com.google.ortools.Loader;
-import com.google.ortools.constraintsolver.*;
-import com.vanapp.model.Usuario;
-import com.vanapp.model.Presenca;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.repository.PresencaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.google.ortools.Loader;
+import com.google.ortools.constraintsolver.Assignment;
+import com.google.ortools.constraintsolver.FirstSolutionStrategy;
+import com.google.ortools.constraintsolver.RoutingIndexManager;
+import com.google.ortools.constraintsolver.RoutingModel;
+import com.google.ortools.constraintsolver.main;
+import com.vanapp.model.Presenca;
+import com.vanapp.model.Usuario;
+import com.vanapp.repository.PresencaRepository;
+import com.vanapp.repository.UsuarioRepository;
 
 @Service
 public class RotaService {
@@ -33,10 +39,10 @@ public class RotaService {
     }
 
     public List<Usuario> otimizarRota(Long motoristaId, String sentido) {
-        // Busca presenças de hoje
+        if (motoristaId == null) throw new RuntimeException("motoristaId não pode ser nulo");
+
         List<Presenca> presencasDoDia = presencaRepository.findByData(LocalDate.now());
-        
-        // Filtra passageiros baseados no sentido solicitado pelo App
+
         List<Usuario> passageiros = presencasDoDia.stream()
                 .filter(p -> p.getUsuario() != null && p.getStatus() != null)
                 .filter(p -> {
@@ -58,7 +64,6 @@ public class RotaService {
         Usuario motorista = usuarioRepository.findById(motoristaId)
                 .orElseThrow(() -> new RuntimeException("Motorista não encontrado"));
 
-        // Preparação para OR-Tools
         int n = passageiros.size() + 1;
         double[] lats = new double[n];
         double[] lons = new double[n];
@@ -75,22 +80,26 @@ public class RotaService {
             }
         }
 
-        // Otimização de Rota (TSP)
         RoutingIndexManager manager = new RoutingIndexManager(n, 1, 0);
         RoutingModel routing = new RoutingModel(manager);
-        routing.setArcCostEvaluatorOfAllVehicles(routing.registerTransitCallback((f, t) -> distancias[manager.indexToNode(f)][manager.indexToNode(t)]));
-        
-        Assignment solution = routing.solveWithParameters(main.defaultRoutingSearchParameters().toBuilder()
-                .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC).build());
-        
+        routing.setArcCostEvaluatorOfAllVehicles(routing.registerTransitCallback(
+                (f, t) -> distancias[manager.indexToNode(f)][manager.indexToNode(t)]));
+
+        Assignment solution = routing.solveWithParameters(
+                main.defaultRoutingSearchParameters().toBuilder()
+                        .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
+                        .build());
+
         if (solution == null) throw new RuntimeException("Falha na otimização");
 
         List<Usuario> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
-        index = solution.value(routing.nextVar(index));
+        long nextIndex = solution.value(routing.nextVar(index));
+        index = nextIndex;
         while (!routing.isEnd(index)) {
             rotaOtimizada.add(passageiros.get(manager.indexToNode(index) - 1));
-            index = solution.value(routing.nextVar(index));
+            nextIndex = solution.value(routing.nextVar(index));
+            index = nextIndex;
         }
 
         if ("volta".equalsIgnoreCase(sentido)) {
