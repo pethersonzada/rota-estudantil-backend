@@ -1,9 +1,11 @@
 package com.vanapp.controller;
+
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,9 +32,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/rota")
 @CrossOrigin(origins = "*")
 public class RotaController {
+    
     @Autowired private PresencaRepository presencaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RotaService rotaService;
+
+    // Armazenamento em memória (RAM) para o MVP. Rápido e não onera o banco de dados.
+    private static final Map<String, Double> localizacaoAtualVan = new ConcurrentHashMap<>();
 
     @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença do passageiro para o dia atual ou limpa o registro.")
     @PostMapping("/confirmar")
@@ -77,5 +83,25 @@ public class RotaController {
             erroJson.put("erro", e.getMessage());
             return ResponseEntity.status(500).body(erroJson);
         }
+    }
+
+    @Operation(summary = "Atualizar Localização da Van", description = "Motorista envia sua localização atual em tempo real (Em memória).")
+    @PostMapping("/localizacao-van")
+    public ResponseEntity<String> atualizarLocalizacaoVan(@RequestParam Double latitude, @RequestParam Double longitude) {
+        if (latitude == null || longitude == null) {
+            return ResponseEntity.badRequest().body("Latitude e longitude são obrigatórios.");
+        }
+        localizacaoAtualVan.put("latitude", latitude);
+        localizacaoAtualVan.put("longitude", longitude);
+        return ResponseEntity.ok("Localização atualizada.");
+    }
+
+    @Operation(summary = "Buscar Localização da Van", description = "Passageiro busca a última localização conhecida do motorista.")
+    @GetMapping("/localizacao-van")
+    public ResponseEntity<Map<String, Double>> obterLocalizacaoVan() {
+        if (localizacaoAtualVan.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(localizacaoAtualVan);
     }
 }
