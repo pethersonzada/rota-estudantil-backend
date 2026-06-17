@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,7 @@ import com.vanapp.model.Usuario;
 import com.vanapp.repository.PresencaRepository;
 import com.vanapp.repository.UsuarioRepository;
 import com.vanapp.service.RotaService;
+import com.vanapp.service.ViagemService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,10 +37,58 @@ public class RotaController {
     @Autowired private PresencaRepository presencaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RotaService rotaService;
+    @Autowired private ViagemService viagemService;
 
-    // Estado em memória
+    // Estado em memória (mantido para alta performance do GPS)
     private static final Map<String, Double> localizacaoAtualVan = new ConcurrentHashMap<>();
     private static boolean rotaAtiva = false;
+
+    // -------------------------------------------------------------------
+    // NOVOS ENDPOINTS: INTEGRAÇÃO DO CICLO DE VIDA DA VIAGEM
+    // -------------------------------------------------------------------
+
+    @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
+    @PostMapping("/iniciar")
+    public ResponseEntity<?> iniciarRota(@RequestBody Map<String, Object> payload) {
+        try {
+            Long motoristaId = Long.valueOf(payload.get("motoristaId").toString());
+            String sentido = payload.get("sentido").toString();
+            
+            // Salva no banco
+            viagemService.iniciarRota(motoristaId, sentido);
+            
+            // Ativa na memória para o GPS
+            rotaAtiva = true;
+            localizacaoAtualVan.clear();
+            
+            return ResponseEntity.ok("Rota iniciada com sucesso.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Encerrar Rota", description = "O motorista finaliza a viagem oficialmente.")
+    @PostMapping("/encerrar")
+    public ResponseEntity<?> encerrarRota() {
+        // Finaliza no banco
+        viagemService.encerrarRota();
+        
+        // Desativa na memória
+        rotaAtiva = false;
+        localizacaoAtualVan.clear();
+        
+        return ResponseEntity.ok("Rota encerrada com sucesso.");
+    }
+
+    @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
+    @GetMapping("/status-atual")
+    public ResponseEntity<Map<String, String>> getStatusAtual() {
+        return ResponseEntity.ok(viagemService.verificarStatusAtual());
+    }
+
+    // -------------------------------------------------------------------
+    // ENDPOINTS ORIGINAIS MANTIDOS
+    // -------------------------------------------------------------------
 
     @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença do passageiro para o dia atual ou limpa o registro.")
     @PostMapping("/confirmar")
@@ -74,16 +124,6 @@ public class RotaController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
         }
-    }
-
-    @Operation(summary = "Ativar/Desativar Rota", description = "O motorista sinaliza o início da viagem para os passageiros.")
-    @PostMapping("/status-rota")
-    public ResponseEntity<String> setRotaAtiva(@RequestParam boolean ativa) {
-        rotaAtiva = ativa;
-        if (!ativa) {
-            localizacaoAtualVan.clear(); // Limpa dados da van quando a viagem termina
-        }
-        return ResponseEntity.ok("Rota " + (ativa ? "ativada" : "desativada"));
     }
 
     @Operation(summary = "Atualizar Localização", description = "Motorista transmite coordenadas reais.")
