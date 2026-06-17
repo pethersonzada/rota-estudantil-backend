@@ -25,17 +25,14 @@ public class Usuario {
     @Column(nullable = false)
     private String tipo;
 
-    // Alterado para nullable = true para o cadastro inicial não quebrar
     @Column(nullable = true)
     private String enderecoCompleto;
 
     private Double latitude;
     private Double longitude;
 
-    // CONSTRUTOR VAZIO OBRIGATÓRIO
     public Usuario() {}
 
-    // Getters e Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNome() { return nome; }

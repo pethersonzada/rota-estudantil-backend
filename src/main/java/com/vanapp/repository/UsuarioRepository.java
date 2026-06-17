@@ -12,6 +12,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByCpf(String cpf);
     Optional<Usuario> findByTelefone(String telefone);
     
-    // A chave que destranca a lista de passageiros para o motorista
     List<Usuario> findByTipo(String tipo);
 }
