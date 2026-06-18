@@ -1,11 +1,11 @@
 package com.vanapp.service;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.ortools.Loader;
@@ -22,10 +22,15 @@ import com.vanapp.repository.UsuarioRepository;
 @Service
 public class RotaService {
 
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private PresencaRepository presencaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PresencaRepository presencaRepository;
 
     static { Loader.loadNativeLibraries(); }
+
+    public RotaService(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository) {
+        this.usuarioRepository = usuarioRepository;
+        this.presencaRepository = presencaRepository;
+    }
 
     private double calcularDistancia(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371000;
@@ -34,35 +39,31 @@ public class RotaService {
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    public List<Usuario> otimizarRota(Long motoristaId, String sentido) {
-        if (motoristaId == null) throw new RuntimeException("motoristaId não pode ser nulo");
+    public List<Usuario> otimizarRota(String sentido) {
+        // DIAGNÓSTICO: Se travar aqui, você verá no terminal do VS Code
+        System.out.println("DEBUG: Iniciando otimização para sentido: " + sentido);
+        
+        List<Usuario> motoristas = usuarioRepository.findByTipo("MOTORISTA");
+        if (motoristas.isEmpty()) {
+            System.err.println("ERRO: Nenhum motorista encontrado com tipo 'MOTORISTA' no banco!");
+            throw new RuntimeException("Nenhum motorista cadastrado no sistema.");
+        }
+        
+        Usuario motorista = motoristas.get(0);
+        System.out.println("DEBUG: Motorista encontrado: " + motorista.getNome());
 
         List<Presenca> presencasDoDia = presencaRepository.findByData(LocalDate.now());
-
         List<Usuario> passageiros = presencasDoDia.stream()
                 .filter(p -> p.getUsuario() != null && p.getStatus() != null)
-                .filter(p -> {
-                    String status = p.getStatus();
-                    if ("ida".equalsIgnoreCase(sentido)) {
-                        return "AMBOS".equals(status) || "IDA".equals(status);
-                    } else {
-                        return "AMBOS".equals(status) || "VOLTA".equals(status);
-                    }
-                })
+                .filter(p -> "AMBOS".equalsIgnoreCase(p.getStatus()) || p.getStatus().equalsIgnoreCase(sentido))
                 .map(Presenca::getUsuario)
                 .distinct()
                 .collect(Collectors.toList());
 
-        if (passageiros.isEmpty()) {
-            throw new RuntimeException("Nenhum passageiro confirmado para " + sentido);
-        }
-
-        Usuario motorista = usuarioRepository.findById(motoristaId)
-                .orElseThrow(() -> new RuntimeException("Motorista não encontrado"));
+        if (passageiros.isEmpty()) throw new RuntimeException("Nenhum passageiro confirmado para " + sentido);
 
         int n = passageiros.size() + 1;
         double[] lats = new double[n];
@@ -90,22 +91,15 @@ public class RotaService {
                         .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
                         .build());
 
-        if (solution == null) throw new RuntimeException("Falha na otimização");
+        if (solution == null) throw new RuntimeException("Falha na otimização da rota");
 
         List<Usuario> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
-        long nextIndex = solution.value(routing.nextVar(index));
-        index = nextIndex;
-        while (!routing.isEnd(index)) {
+        while ((index = solution.value(routing.nextVar(index))) != routing.end(0)) {
             rotaOtimizada.add(passageiros.get(manager.indexToNode(index) - 1));
-            nextIndex = solution.value(routing.nextVar(index));
-            index = nextIndex;
         }
 
-        if ("volta".equalsIgnoreCase(sentido)) {
-            Collections.reverse(rotaOtimizada);
-        }
-
+        if ("volta".equalsIgnoreCase(sentido)) Collections.reverse(rotaOtimizada);
         return rotaOtimizada;
     }
 }

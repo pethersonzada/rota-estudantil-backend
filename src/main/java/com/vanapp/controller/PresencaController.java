@@ -3,7 +3,6 @@ package com.vanapp.controller;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +23,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @CrossOrigin(origins = "*")
 public class PresencaController {
 
-    @Autowired private PresencaRepository presencaRepository;
+    private final PresencaRepository presencaRepository;
+
+    public PresencaController(PresencaRepository presencaRepository) {
+        this.presencaRepository = presencaRepository;
+    }
 
     @Operation(summary = "Marcar Presença", description = "Registra o status do passageiro (ex: embarcado, ausente) para a data atual.")
     @PostMapping("/marcar")

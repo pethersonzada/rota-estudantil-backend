@@ -2,16 +2,13 @@ package com.vanapp.controller;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,19 +30,24 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/rota")
 @CrossOrigin(origins = "*")
 public class RotaController {
-    
-    @Autowired private PresencaRepository presencaRepository;
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private RotaService rotaService;
-    @Autowired private ViagemService viagemService;
 
-    // Estado em memória (mantido para alta performance do GPS)
+    private final PresencaRepository presencaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final RotaService rotaService;
+    private final ViagemService viagemService;
+
+    public RotaController(PresencaRepository presencaRepository, 
+                          UsuarioRepository usuarioRepository, 
+                          RotaService rotaService, 
+                          ViagemService viagemService) {
+        this.presencaRepository = presencaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.rotaService = rotaService;
+        this.viagemService = viagemService;
+    }
+
     private static final Map<String, Double> localizacaoAtualVan = new ConcurrentHashMap<>();
     private static boolean rotaAtiva = false;
-
-    // -------------------------------------------------------------------
-    // NOVOS ENDPOINTS: INTEGRAÇÃO DO CICLO DE VIDA DA VIAGEM
-    // -------------------------------------------------------------------
 
     @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
     @PostMapping("/iniciar")
@@ -54,29 +56,22 @@ public class RotaController {
             Long motoristaId = Long.valueOf(payload.get("motoristaId").toString());
             String sentido = payload.get("sentido").toString();
             
-            // Salva no banco
             viagemService.iniciarRota(motoristaId, sentido);
-            
-            // Ativa na memória para o GPS
             rotaAtiva = true;
             localizacaoAtualVan.clear();
             
             return ResponseEntity.ok("Rota iniciada com sucesso.");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", "Dados inválidos: " + e.getMessage()));
         }
     }
 
     @Operation(summary = "Encerrar Rota", description = "O motorista finaliza a viagem oficialmente.")
     @PostMapping("/encerrar")
     public ResponseEntity<?> encerrarRota() {
-        // Finaliza no banco
         viagemService.encerrarRota();
-        
-        // Desativa na memória
         rotaAtiva = false;
         localizacaoAtualVan.clear();
-        
         return ResponseEntity.ok("Rota encerrada com sucesso.");
     }
 
@@ -85,10 +80,6 @@ public class RotaController {
     public ResponseEntity<Map<String, String>> getStatusAtual() {
         return ResponseEntity.ok(viagemService.verificarStatusAtual());
     }
-
-    // -------------------------------------------------------------------
-    // ENDPOINTS ORIGINAIS MANTIDOS
-    // -------------------------------------------------------------------
 
     @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença do passageiro para o dia atual ou limpa o registro.")
     @PostMapping("/confirmar")
@@ -116,13 +107,14 @@ public class RotaController {
     }
 
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas.")
-    @GetMapping("/otimizar/{motoristaId}")
-    public ResponseEntity<?> otimizarRota(@PathVariable Long motoristaId, @RequestParam String sentido) {
+    @GetMapping("/otimizar")
+    public ResponseEntity<?> otimizarRota(@RequestParam String sentido) {
         try {
-            List<Usuario> rotaOtimizada = rotaService.otimizarRota(motoristaId, sentido);
-            return ResponseEntity.ok(rotaOtimizada);
+            return ResponseEntity.ok(rotaService.otimizarRota(sentido));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("erro", "Erro interno: " + e.getMessage()));
         }
     }
 

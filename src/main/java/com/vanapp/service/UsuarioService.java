@@ -1,7 +1,7 @@
 package com.vanapp.service;
+
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.vanapp.model.Usuario;
@@ -9,8 +9,14 @@ import com.vanapp.repository.UsuarioRepository;
 
 @Service
 public class UsuarioService {
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private GeocodingService geocodingService;
+
+    private final UsuarioRepository usuarioRepository;
+    private final GeocodingService geocodingService;
+
+    public UsuarioService(UsuarioRepository usuarioRepository, GeocodingService geocodingService) {
+        this.usuarioRepository = usuarioRepository;
+        this.geocodingService = geocodingService;
+    }
 
     public Usuario cadastrarUsuario(Usuario usuario) {
         if (usuarioRepository.findByCpf(usuario.getCpf()).isPresent()) {
@@ -19,9 +25,11 @@ public class UsuarioService {
         if (usuarioRepository.findByTelefone(usuario.getTelefone()).isPresent()) {
             throw new RuntimeException("Telefone já cadastrado");
         }
+        
         double[] coordenadas = geocodingService.geocodificarEndereco(usuario.getEnderecoCompleto());
         usuario.setLatitude(coordenadas[0]);
         usuario.setLongitude(coordenadas[1]);
+        
         return usuarioRepository.save(usuario);
     }
 

@@ -1,10 +1,10 @@
 package com.vanapp.controller;
+
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -30,8 +30,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @CrossOrigin(origins = "*")
 public class UsuarioController {
 
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private PresencaRepository presencaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PresencaRepository presencaRepository;
+
+    public UsuarioController(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository) {
+        this.usuarioRepository = usuarioRepository;
+        this.presencaRepository = presencaRepository;
+    }
 
     public static class PassageiroDTO {
         public Long id;

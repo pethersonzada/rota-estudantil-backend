@@ -1,15 +1,17 @@
 package com.vanapp.repository;
 
-import com.vanapp.model.Usuario;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.vanapp.model.Usuario;
+
+
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+
     Optional<Usuario> findByCpf(String cpf);
+
     Optional<Usuario> findByTelefone(String telefone);
     
     List<Usuario> findByTipo(String tipo);

@@ -1,7 +1,14 @@
 package com.vanapp.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "viagem")
@@ -15,10 +22,10 @@ public class Viagem {
     private Long motoristaId;
 
     @Column(nullable = false)
-    private String sentido; // IDA ou VOLTA
+    private String sentido;
 
     @Column(nullable = false)
-    private String status; // EM_ANDAMENTO ou FINALIZADA
+    private String status;
 
     @Column(name = "data_criacao", updatable = false)
     private LocalDateTime dataCriacao;

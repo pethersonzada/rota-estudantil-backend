@@ -1,19 +1,22 @@
 package com.vanapp.service;
 
-import com.vanapp.model.Viagem;
-import com.vanapp.repository.ViagemRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.stereotype.Service;
+
+import com.vanapp.model.Viagem;
+import com.vanapp.repository.ViagemRepository;
+
 @Service
 public class ViagemService {
 
-    @Autowired
-    private ViagemRepository viagemRepository;
+    private final ViagemRepository viagemRepository;
+
+    public ViagemService(ViagemRepository viagemRepository) {
+        this.viagemRepository = viagemRepository;
+    }
 
     public void iniciarRota(Long motoristaId, String sentido) {
         Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
