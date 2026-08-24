@@ -41,3 +41,11 @@ Aplicação mobile para estudantes e motoristas. O app consome a API do backend 
  ## Visualizar o Frontend da Aplicação
 
  https://github.com/pethersonzada/van-app/
+
+ ## 🔒 Licença e Direitos Autorais
+
+Copyright© 2026 Miguel Petherson Silva. Todos os direitos reservados.
+
+Este software e sua documentação associada (o "Projeto Rota Estudantil") são de propriedade exclusiva do autor. 
+
+É expressamente proibida a cópia, modificação, distribuição, comercialização ou utilização total ou parcial deste código-fonte sem a autorização prévia e expressa por escrito do autor.
