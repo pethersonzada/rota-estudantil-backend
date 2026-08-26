@@ -61,10 +61,10 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado no sistema."));
         
         if ("MOTORISTA".equals(usuario.getTipo())) {
-            if (viagemRepository.existsByMotoristaIdAndStatus(id, "EM_ANDAMENTO")) {
+            if (viagemRepository.existsByTurmaMotoristaIdAndStatus(id, "EM_ANDAMENTO")) {
                 throw new RuntimeException("Não é possível excluir a conta com uma rota em andamento. Encerre a viagem primeiro.");
             }
-            viagemRepository.deleteAllByMotoristaId(id);
+            viagemRepository.deleteAllByTurmaMotoristaId(id);
         }
 
         presencaRepository.deleteAllByUsuarioId(id); 

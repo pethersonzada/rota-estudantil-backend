@@ -53,14 +53,21 @@ public class RotaController {
     @PostMapping("/iniciar")
     public ResponseEntity<?> iniciarRota(@RequestBody Map<String, Object> payload) {
         try {
-            Long motoristaId = Long.valueOf(payload.get("motoristaId").toString());
-            String sentido = payload.get("sentido").toString();
+            Object turmaIdObj = payload.get("turmaId");
+            Object sentidoObj = payload.get("sentido");
+
+            if (turmaIdObj == null || sentidoObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("erro", "Dados inválidos: turmaId e sentido são obrigatórios."));
+            }
+
+            Long turmaId = Long.valueOf(turmaIdObj.toString());
+            String sentido = sentidoObj.toString();
             
-            viagemService.iniciarRota(motoristaId, sentido);
+            viagemService.iniciarRota(turmaId, sentido);
             rotaAtiva = true;
             localizacaoAtualVan.clear();
             
-            return ResponseEntity.ok("Rota iniciada com sucesso.");
+            return ResponseEntity.ok(Map.of("mensagem", "Rota iniciada com sucesso."));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("erro", "Dados inválidos: " + e.getMessage()));
         }
@@ -77,7 +84,7 @@ public class RotaController {
 
     @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
     @GetMapping("/status-atual")
-    public ResponseEntity<Map<String, String>> getStatusAtual() {
+    public ResponseEntity<Map<String, Object>> getStatusAtual() {
         return ResponseEntity.ok(viagemService.verificarStatusAtual());
     }
 

@@ -1,9 +1,7 @@
 package com.vanapp.service;
 
 import java.time.LocalDate;
-
 import org.springframework.stereotype.Service;
-
 import com.vanapp.model.Presenca;
 import com.vanapp.repository.PresencaRepository;
 

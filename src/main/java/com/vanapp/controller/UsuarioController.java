@@ -50,6 +50,7 @@ public class UsuarioController {
         public String status;
         public Double latitude;
         public Double longitude;
+        public String tipo;
 
         public PassageiroDTO(Usuario u, String status) {
             this.id = u.getId();
@@ -57,6 +58,7 @@ public class UsuarioController {
             this.status = status;
             this.latitude = u.getLatitude();
             this.longitude = u.getLongitude();
+            this.tipo = u.getTipo();
         }
     }
 

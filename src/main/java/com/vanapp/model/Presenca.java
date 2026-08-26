@@ -1,14 +1,7 @@
 package com.vanapp.model;
 
 import java.time.LocalDate;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "presencas")
@@ -21,6 +14,10 @@ public class Presenca {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @ManyToOne
+    @JoinColumn(name = "viagem_id", nullable = false)
+    private Viagem viagem;
+
     private LocalDate data;
     private String status;
 
@@ -29,6 +26,9 @@ public class Presenca {
     
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+
+    public Viagem getViagem() { return viagem; }
+    public void setViagem(Viagem viagem) { this.viagem = viagem; }
     
     public LocalDate getData() { return data; }
     public void setData(LocalDate data) { this.data = data; }
@@ -38,5 +38,9 @@ public class Presenca {
 
     public Long getUsuarioId() {
         return this.usuario != null ? this.usuario.getId() : null;
+    }
+
+    public Long getViagemId() {
+        return this.viagem != null ? this.viagem.getId() : null;
     }
 }

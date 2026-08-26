@@ -1,14 +1,7 @@
 package com.vanapp.model;
 
 import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "viagem")
@@ -18,8 +11,9 @@ public class Viagem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "motorista_id", nullable = false)
-    private Long motoristaId;
+    @ManyToOne
+    @JoinColumn(name = "turma_id", nullable = false)
+    private Turma turma;
 
     @Column(nullable = false)
     private String sentido;
@@ -37,8 +31,8 @@ public class Viagem {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getMotoristaId() { return motoristaId; }
-    public void setMotoristaId(Long motoristaId) { this.motoristaId = motoristaId; }
+    public Turma getTurma() { return turma; }
+    public void setTurma(Turma turma) { this.turma = turma; }
     public String getSentido() { return sentido; }
     public void setSentido(String sentido) { this.sentido = sentido; }
     public String getStatus() { return status; }

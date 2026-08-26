@@ -3,22 +3,27 @@ package com.vanapp.service;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
 import org.springframework.stereotype.Service;
-
+import com.vanapp.model.Turma;
 import com.vanapp.model.Viagem;
+import com.vanapp.repository.TurmaRepository;
 import com.vanapp.repository.ViagemRepository;
 
 @Service
 public class ViagemService {
 
     private final ViagemRepository viagemRepository;
+    private final TurmaRepository turmaRepository;
 
-    public ViagemService(ViagemRepository viagemRepository) {
+    public ViagemService(ViagemRepository viagemRepository, TurmaRepository turmaRepository) {
         this.viagemRepository = viagemRepository;
+        this.turmaRepository = turmaRepository;
     }
 
-    public void iniciarRota(Long motoristaId, String sentido) {
+    public void iniciarRota(Long turmaId, String sentido) {
+        Turma turma = turmaRepository.findById(turmaId)
+                .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+
         Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
         
         if (viagemAtiva.isPresent()) {
@@ -26,7 +31,7 @@ public class ViagemService {
         }
 
         Viagem novaViagem = new Viagem();
-        novaViagem.setMotoristaId(motoristaId);
+        novaViagem.setTurma(turma);
         novaViagem.setSentido(sentido);
         novaViagem.setStatus("EM_ANDAMENTO");
 
@@ -43,13 +48,16 @@ public class ViagemService {
         }
     }
 
-    public Map<String, String> verificarStatusAtual() {
+    public Map<String, Object> verificarStatusAtual() {
         Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
-        Map<String, String> resposta = new HashMap<>();
+        Map<String, Object> resposta = new HashMap<>();
 
         if (viagemAtiva.isPresent()) {
+            Viagem v = viagemAtiva.get();
             resposta.put("status", "ATIVA");
-            resposta.put("sentido", viagemAtiva.get().getSentido());
+            resposta.put("sentido", v.getSentido());
+            resposta.put("turmaId", v.getTurma().getId());
+            resposta.put("turmaNome", v.getTurma().getNome());
         } else {
             resposta.put("status", "INATIVA");
         }
