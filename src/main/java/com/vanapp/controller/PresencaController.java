@@ -29,7 +29,7 @@ public class PresencaController {
         this.presencaRepository = presencaRepository;
     }
 
-    @Operation(summary = "Marcar Presença", description = "Registra o status do passageiro (ex: embarcado, ausente) para a data atual.")
+    @Operation(summary = "Marcar Presença", description = "Registra o status do passageiro para a data atual.")
     @PostMapping("/marcar")
     public ResponseEntity<?> marcarPresenca(@RequestBody Presenca presenca) {
         if (presenca.getUsuarioId() == null) {
@@ -41,12 +41,14 @@ public class PresencaController {
 
         if (existente != null) {
             existente.setStatus(presenca.getStatus());
+            existente.setViagem(null);
             presencaRepository.save(existente);
         } else {
             Usuario user = new Usuario();
             user.setId(presenca.getUsuarioId());
             presenca.setUsuario(user);
             presenca.setData(hoje);
+            presenca.setViagem(null); 
             presencaRepository.save(presenca);
         }
         return ResponseEntity.ok("Presença registrada com sucesso");

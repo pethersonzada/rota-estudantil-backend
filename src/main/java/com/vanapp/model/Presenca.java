@@ -15,7 +15,7 @@ public class Presenca {
     private Usuario usuario;
 
     @ManyToOne
-    @JoinColumn(name = "viagem_id", nullable = false)
+    @JoinColumn(name = "viagem_id", nullable = true, foreignKey = @ForeignKey(ConstraintMode.CONSTRAINT))
     private Viagem viagem;
 
     private LocalDate data;

@@ -1,10 +1,16 @@
 package com.vanapp.controller;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.vanapp.model.Presenca;
 import com.vanapp.model.Turma;
 import com.vanapp.model.Usuario;
+import com.vanapp.repository.PresencaRepository;
 import com.vanapp.service.TurmaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,9 +22,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class TurmaController {
 
     private final TurmaService turmaService;
+    private final PresencaRepository presencaRepository;
 
-    public TurmaController(TurmaService turmaService) {
+    public TurmaController(TurmaService turmaService, PresencaRepository presencaRepository) {
         this.turmaService = turmaService;
+        this.presencaRepository = presencaRepository;
     }
 
     @Operation(summary = "Criar Turma", description = "Cadastra uma nova rota/turno para o motorista.")
@@ -39,11 +47,25 @@ public class TurmaController {
         return ResponseEntity.ok(turmas);
     }
 
-    @Operation(summary = "Listar Passageiros da Turma", description = "Retorna os passageiros vinculados a uma turma específica.")
+    @Operation(summary = "Listar Passageiros da Turma", description = "Retorna os passageiros vinculados a uma turma junto com o status de presença do dia.")
     @GetMapping("/{turmaId}/passageiros")
-    public ResponseEntity<List<Usuario>> listarPassageirosDaTurma(@PathVariable Long turmaId) {
+    public ResponseEntity<List<Map<String, Object>>> listarPassageirosDaTurma(@PathVariable Long turmaId) {
         List<Usuario> passageiros = turmaService.listarPassageirosPorTurma(turmaId);
-        return ResponseEntity.ok(passageiros);
+        LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
+
+        List<Map<String, Object>> resultado = passageiros.stream().map(aluno -> {
+            Presenca presenca = presencaRepository.findByUsuarioIdAndData(aluno.getId(), hoje);
+            
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", aluno.getId());
+            map.put("nome", aluno.getNome());
+            map.put("telefone", aluno.getTelefone());
+            map.put("enderecoCompleto", aluno.getEnderecoCompleto());
+            map.put("status", presenca != null ? presenca.getStatus() : null);
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(resultado);
     }
 
     @Operation(summary = "Adicionar Aluno à Turma", description = "Vincula um usuário/passageiro a uma turma específica.")
