@@ -51,6 +51,17 @@ public class TurmaService {
         turmaRepository.save(turma);
     }
 
+    public void removerAluno(Long turmaId, Long alunoId) {
+        Turma turma = turmaRepository.findById(turmaId)
+                .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+        
+        Usuario aluno = usuarioRepository.findById(alunoId)
+                .orElseThrow(() -> new RuntimeException("Aluno não encontrado."));
+        
+        turma.getAlunos().remove(aluno);
+        turmaRepository.save(turma);
+    }
+
     public Turma buscarTurmaPorAlunoId(Long alunoId) {
         return turmaRepository.findAll().stream()
                 .filter(turma -> turma.getAlunos().stream().anyMatch(aluno -> aluno.getId().equals(alunoId)))

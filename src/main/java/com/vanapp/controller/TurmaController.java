@@ -79,6 +79,17 @@ public class TurmaController {
         }
     }
 
+    @Operation(summary = "Remover Aluno da Turma", description = "Desvincula um usuário/passageiro de uma turma específica.")
+    @DeleteMapping("/{turmaId}/alunos/{alunoId}")
+    public ResponseEntity<?> removerAlunoTurma(@PathVariable Long turmaId, @PathVariable Long alunoId) {
+        try {
+            turmaService.removerAluno(turmaId, alunoId);
+            return ResponseEntity.ok("Aluno removido com sucesso.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @Operation(summary = "Buscar Turma do Aluno", description = "Retorna a turma vinculada a um usuário/aluno específico.")
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<?> buscarTurmaPorUsuario(@PathVariable Long usuarioId) {
@@ -103,4 +114,5 @@ public class TurmaController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
 }
