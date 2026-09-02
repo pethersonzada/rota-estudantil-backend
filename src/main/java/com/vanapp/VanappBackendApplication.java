@@ -15,7 +15,6 @@ public class VanappBackendApplication {
                 System.setProperty("DATABASE_PASSWORD", dotenv.get("DATABASE_PASSWORD"));
             }
         } catch (Exception e) {
-            // Ignora se o .env não existir (como no Render)
         }
         
         SpringApplication.run(VanappBackendApplication.class, args);
